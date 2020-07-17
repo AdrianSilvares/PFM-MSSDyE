@@ -1,0 +1,103 @@
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: my-tfm-sensor
+spec:
+  selector:
+    matchLabels:
+      app: my-tfm-sensor
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0%
+      maxUnavailable: 100%
+  template:
+    metadata:
+      labels:
+        app: my-tfm-sensor
+      annotations:
+        isEdgeDeployment: "true"
+        targetCondition: "tags.fireWarning='yes'"
+        priority: "15"
+        loggingOptions: ""
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - my-tfm-sensor
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: data
+        image: "adriansilvaresramos/microservicedata:60"
+      - name: telegram
+        image: "adriansilvaresramos/tfm_telegram_bot_module:0.0.1-amd64"
+      - name: stream
+        image: "adriansilvaresramos/microservicestream:62"
+      nodeSelector:
+        type: virtual-kubelet
+      tolerations:
+      - key: virtual-kubelet.io/provider
+        operator: Equal
+        value: iotedge
+        effect: NoSchedule
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: edgehub
+data:
+  desiredProperties: |
+    {
+      "routes": {
+        "DataToTelegramBot": "FROM /messages/modules/data/outputs/data_output INTO BrokeredEndpoint(\"/modules/telegram/inputs/data_input\")",
+        "DataToStreamingModule": "FROM /messages/modules/data/outputs/data_output INTO BrokeredEndpoint(\"/modules/stream/inputs/data_input\")",
+        "streaming": "FROM /messages/modules/stream/outputs/data_output INTO $upstream"
+      },
+      "storeAndForwardConfiguration": {
+        "timeToLiveSecs": 7200
+      }
+    }
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: my-tfm-sensor
+data:
+  status: running
+  restartPolicy: on-unhealthy
+  version: "1.0"
+  createOptions: |
+    {
+      "HostConfig": {
+        "PortBindings": {
+          "27017/tcp": [
+            {
+              "HostPort": "27017"
+            }
+          ],
+          "5671/tcp": [
+            {
+              "HostPort": "5671"
+            }
+          ],
+          "8883/tcp": [
+            {
+              "HostPort": "8883"
+            }
+          ],
+          "443/tcp": [
+            {
+              "HostPort": "443"
+            }
+          ]
+        }
+      }
+    }
+---

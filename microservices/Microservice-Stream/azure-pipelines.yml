@@ -1,0 +1,13 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: Docker@2
+  inputs:
+    containerRegistry: 'adriansilvaresramos'
+    repository: 'adriansilvaresramos/microservicestream'
+    command: 'buildAndPush'
+    Dockerfile: '**/Dockerfile.amd64'

@@ -1,0 +1,1 @@
+# Despliegue continuo y orquestación de microservicios contenerizados para aplicaciones híbridas IoT (Edge + Cloud): Sistema de detecci ó n de incendios forestales con drones
